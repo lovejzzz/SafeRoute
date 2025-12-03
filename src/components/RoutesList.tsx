@@ -472,7 +472,17 @@ export default function RoutesList({ onRouteSelect }: RoutesListProps) {
                 route={route.type}
                 title={route.title}
                 time={formatDuration(route.duration)}
-                details={formatDistance(route.distance)}
+                details={`${formatDistance(route.distance)} · ${route.safety.crossings}`}
+                nightFriendly={route.nightFriendly}
+                safety={{
+                  lightingLevel: route.safety.lightingLevel,
+                  crossingCount: route.safety.crossingCount,
+                  sidewalkCoverage: route.safety.sidewalkCoverage,
+                }}
+                comfort={{
+                  shadePercent: route.comfort.shadePercent,
+                  restSpotCount: route.comfort.restSpotCount,
+                }}
                 recommended={isRecommended}
                 recommendationReason={isRecommended ? smartRecommendation?.reason : undefined}
                 onClick={() => onRouteSelect(route.type)}
