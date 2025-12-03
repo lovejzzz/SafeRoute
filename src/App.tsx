@@ -38,8 +38,8 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-      <div className="w-full max-w-[390px] h-[844px] bg-white relative overflow-hidden shadow-xl rounded-[40px]">
+    <div className="h-[100dvh] md:min-h-screen bg-gray-100 md:flex md:items-center md:justify-center">
+      <div className="w-full md:max-w-[390px] h-[100dvh] md:h-[844px] bg-white relative overflow-hidden md:shadow-xl md:rounded-[40px]">
         {currentPage === 'list' && (
           <RoutesList onRouteSelect={handleRouteSelect} />
         )}

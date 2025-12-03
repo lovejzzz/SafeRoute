@@ -19,8 +19,17 @@ export default function RoutePreview({ onBack, onStepByStep, onStartNavigation }
     routes, 
     selectedRoute, 
     selectRoute, 
-    mapboxToken 
+    mapboxToken,
+    transportMode
   } = useRoute();
+  
+  const getStartButtonText = () => {
+    switch (transportMode) {
+      case 'driving-traffic': return 'Start driving';
+      case 'cycling': return 'Start cycling';
+      default: return 'Start walking';
+    }
+  };
   
   const mapContainer = useRef<HTMLDivElement>(null);
   const map = useRef<mapboxgl.Map | null>(null);
@@ -471,7 +480,7 @@ export default function RoutePreview({ onBack, onStepByStep, onStartNavigation }
               className="w-full bg-blue-600 hover:bg-blue-700"
               onClick={onStartNavigation}
             >
-              Start walking
+              {getStartButtonText()}
             </Button>
           </div>
         </div>
