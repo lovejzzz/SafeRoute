@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
 
 // Mapbox access token
 const MAPBOX_TOKEN = 'pk.eyJ1Ijoic2t5eGluZyIsImEiOiJjbWlxZWk2YW4wb3gyM2Rwd3kwNWRxOWJvIn0.bb0NDstLAH8ENvTTDFw9Vw';

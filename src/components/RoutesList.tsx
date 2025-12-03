@@ -123,11 +123,11 @@ export default function RoutesList({ onRouteSelect }: RoutesListProps) {
       });
 
       // Add markers
-      const startMarker = new mapboxgl.Marker({ color: '#DC2626' })
+      new mapboxgl.Marker({ color: '#DC2626' })
         .setLngLat([origin.coordinates.lng, origin.coordinates.lat])
         .addTo(map.current);
 
-      const endMarker = new mapboxgl.Marker({ color: '#059669' })
+      new mapboxgl.Marker({ color: '#059669' })
         .setLngLat([destination.coordinates.lng, destination.coordinates.lat])
         .addTo(map.current);
 

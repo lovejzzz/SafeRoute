@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { ArrowLeft, X, Volume2, VolumeX, Navigation2, CornerUpRight, CornerUpLeft, ArrowUp, MapPin, ChevronUp, ChevronDown } from 'lucide-react';
+import { X, Volume2, VolumeX, CornerUpRight, CornerUpLeft, ArrowUp, MapPin, ChevronUp, ChevronDown } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import { useRoute, Coordinates } from '../context/RouteContext';
 

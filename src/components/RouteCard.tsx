@@ -1,4 +1,4 @@
-import { Moon, Sun, TreePine, Coffee, Armchair } from 'lucide-react';
+import { Moon, Sun, TreePine, Coffee } from 'lucide-react';
 import { Badge } from './ui/badge';
 
 interface RouteCardProps {
