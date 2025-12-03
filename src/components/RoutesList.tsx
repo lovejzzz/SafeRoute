@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { MoreVertical, Car, User, Bike, Loader2, Settings, Info, MapPin, RotateCcw, ArrowUpDown } from 'lucide-react';
+import { MoreVertical, Car, User, Bike, Loader2, Settings, Info, MapPin, RotateCcw, ArrowUpDown, Sun, Cloud, CloudRain, Snowflake } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import RouteCard from './RouteCard';
 import LocationSearch from './LocationSearch';
 import { DropdownMenu, DropdownItem, DropdownDivider } from './ui/dropdown-menu';
 import { useRoute, TransportMode } from '../context/RouteContext';
+import { useWeather } from '../context/WeatherContext';
 
 interface RoutesListProps {
   onRouteSelect: (route: 'fastest' | 'safest' | 'comfortable' | 'scenic') => void;
@@ -26,6 +27,8 @@ export default function RoutesList({ onRouteSelect }: RoutesListProps) {
     getCurrentLocation,
     clearAll,
   } = useRoute();
+  
+  const { weather, timeContext, alerts } = useWeather();
   
   const [routePreference, setRoutePreference] = useState<'safe' | 'fast' | 'comfy'>(() => {
     return (localStorage.getItem('routePreference') as 'safe' | 'fast' | 'comfy') || 'safe';
@@ -173,13 +176,28 @@ export default function RoutesList({ onRouteSelect }: RoutesListProps) {
     return `${hours}h ${remainMins}m`;
   };
 
-  // Smart recommendation algorithm
+  // Smart recommendation algorithm using real weather + time data
   const getSmartRecommendation = () => {
     if (routes.length === 0) return null;
     
-    const hour = new Date().getHours();
-    const isNightTime = hour >= 18 || hour < 6; // 6 PM to 6 AM
-    const isHotWeather = new Date().getMonth() >= 5 && new Date().getMonth() <= 8; // June-Sept
+    // Use real-time context
+    const isDark = timeContext.isDark;
+    const isRushHour = timeContext.isRushHour;
+    const isWeekend = timeContext.isWeekend;
+    const currentTimeOfDay = timeContext.timeOfDay;
+    
+    // Use real weather data if available
+    const isRaining = weather?.current.condition === 'rain' || 
+                      weather?.current.condition === 'drizzle' ||
+                      weather?.current.condition === 'thunderstorm';
+    const isSnowing = weather?.current.condition === 'snow';
+    const isHotWeather = weather ? weather.current.temp > 85 : 
+                         (new Date().getMonth() >= 5 && new Date().getMonth() <= 8);
+    const isColdWeather = weather ? weather.current.temp < 40 : false;
+    const isWindy = weather ? weather.current.windSpeed > 15 : false;
+    const hasWeatherAlerts = alerts.length > 0;
+    const isMidDay = currentTimeOfDay === 'midday';
+    const isLateNight = currentTimeOfDay === 'late-night';
     
     // Score each route
     const scoredRoutes = routes.map(route => {
@@ -193,36 +211,128 @@ export default function RoutesList({ onRouteSelect }: RoutesListProps) {
         reasons.push('matches your preference');
       }
       
-      // Night time: prioritize well-lit routes
-      if (isNightTime) {
-        if (route.safety.lightingLevel === 'well-lit') {
-          score += 40;
-          reasons.push('well-lit for night');
-        } else if (route.safety.lightingLevel === 'mixed') {
-          score += 10;
+      // WEATHER-BASED SCORING (real-time data)
+      
+      // Rain/Snow: prioritize covered routes, penalize steep slopes
+      if (isRaining || isSnowing) {
+        // Prefer routes with more rest spots (shelter opportunities)
+        score += route.comfort.restSpotCount * 10;
+        if (route.comfort.restSpotCount >= 2) {
+          reasons.push('has shelter spots');
         }
-        // Bonus for night-friendly routes
-        if (route.nightFriendly) {
-          score += 25;
-          reasons.push('night-friendly');
+        // Prefer safer routes (less slippery conditions)
+        if (route.safety.sidewalkCoverage === 'continuous') {
+          score += 20;
+          reasons.push('continuous sidewalks');
+        }
+        // Penalize fastest route (usually more exposed)
+        if (route.type === 'fastest') {
+          score -= 15;
         }
       }
       
-      // Hot weather: prioritize shaded routes
+      // Hot weather: prioritize shaded routes with rest spots
       if (isHotWeather) {
         const shadeScore = route.comfort.shadePercent || 0;
-        score += shadeScore * 0.3; // Max +30 for 100% shade
+        score += shadeScore * 0.4; // Max +40 for 100% shade
         if (shadeScore >= 60) {
           reasons.push('good shade coverage');
         }
         // Bonus for rest spots (hydration/breaks)
         if (route.comfort.restSpotCount >= 2) {
-          score += 15;
+          score += 20;
           reasons.push('rest stops available');
+        }
+        // Penalize longer routes in heat
+        if (route.type === 'comfortable' || route.type === 'scenic') {
+          score += 15; // Actually boost comfortable routes
         }
       }
       
-      // Safety bonuses
+      // Cold weather: prefer shorter, faster routes
+      if (isColdWeather) {
+        if (route.type === 'fastest') {
+          score += 25;
+          reasons.push('shorter exposure time');
+        }
+        // Penalize long scenic routes
+        if (route.type === 'scenic') {
+          score -= 10;
+        }
+      }
+      
+      // Windy: prefer sheltered routes
+      if (isWindy) {
+        // Comfortable routes tend to have more building cover
+        if (route.type === 'comfortable') {
+          score += 15;
+          reasons.push('wind-protected');
+        }
+        // Scenic/open routes are more exposed
+        if (route.type === 'scenic') {
+          score -= 10;
+        }
+      }
+      
+      // TIME-BASED SCORING (real-time)
+      
+      // Dark hours: prioritize well-lit routes
+      if (isDark) {
+        if (route.safety.lightingLevel === 'well-lit') {
+          score += 45;
+          reasons.push('well-lit for dark hours');
+        } else if (route.safety.lightingLevel === 'mixed') {
+          score += 10;
+        } else {
+          score -= 20; // Penalize dark routes at night
+        }
+        if (route.nightFriendly) {
+          score += 30;
+          reasons.push('night-friendly');
+        }
+      }
+      
+      // Late night (1-5 AM): extra safety priority
+      if (isLateNight) {
+        if (route.type === 'safest') {
+          score += 35;
+          reasons.push('safest for late night');
+        }
+        // Strongly penalize scenic/isolated routes
+        if (route.type === 'scenic') {
+          score -= 25;
+        }
+      }
+      
+      // Rush hour: prefer routes with wider sidewalks
+      if (isRushHour) {
+        if (route.safety.sidewalkCoverage === 'continuous') {
+          score += 20;
+          reasons.push('wide sidewalks for rush hour');
+        }
+        // Penalize routes with many crossings during rush hour
+        if (route.safety.crossingCount > 4) {
+          score -= 10;
+        }
+      }
+      
+      // Midday sun: prioritize shade (especially in summer)
+      if (isMidDay && weather && weather.current.temp > 75) {
+        score += route.comfort.shadePercent * 0.3;
+        if (route.comfort.shadePercent >= 60) {
+          reasons.push('shaded for midday sun');
+        }
+      }
+      
+      // Weekend: scenic routes more appealing
+      if (isWeekend && !isDark && !isRaining && !isColdWeather) {
+        if (route.type === 'scenic' || route.type === 'comfortable') {
+          score += 15;
+          reasons.push('nice for weekend stroll');
+        }
+      }
+      
+      // Safety bonuses (always apply)
       if (route.safety.sidewalkCoverage === 'continuous') {
         score += 15;
       }
@@ -244,16 +354,32 @@ export default function RoutesList({ onRouteSelect }: RoutesListProps) {
     scoredRoutes.sort((a, b) => b.score - a.score);
     const best = scoredRoutes[0];
     
-    // Generate recommendation reason
+    // Generate recommendation reason based on weather
     let reason = '';
-    if (isNightTime && best.reasons.includes('well-lit for night')) {
-      reason = '🌙 Best for evening walk';
+    if (isRaining) {
+      reason = '🌧️ Best for rainy weather';
+    } else if (isSnowing) {
+      reason = '❄️ Safest in snow';
     } else if (isHotWeather && best.reasons.includes('good shade coverage')) {
-      reason = '☀️ Best for hot weather';
+      reason = `☀️ Best for ${weather?.current.temp}°F heat`;
+    } else if (isColdWeather && best.reasons.includes('shorter exposure time')) {
+      reason = `🥶 Quickest in ${weather?.current.temp}°F cold`;
+    } else if (isWindy && best.reasons.includes('wind-protected')) {
+      reason = '💨 Wind-protected route';
+    } else if (isDark && best.reasons.includes('well-lit for dark hours')) {
+      reason = `🌙 Best for ${timeContext.displayTime} walk`;
+    } else if (isLateNight && best.reasons.includes('safest for late night')) {
+      reason = '🌙 Safest for late night';
+    } else if (isRushHour && best.reasons.includes('wide sidewalks for rush hour')) {
+      reason = '🚶 Best for rush hour';
+    } else if (isWeekend && best.reasons.includes('nice for weekend stroll')) {
+      reason = '🌳 Great for weekend walk';
+    } else if (hasWeatherAlerts) {
+      reason = `⚠️ ${alerts[0].title}`;
     } else if (best.reasons.includes('matches your preference')) {
       reason = '★ Recommended for you';
-    } else if (best.reasons.includes('night-friendly')) {
-      reason = '🌙 Safe at night';
+    } else if (weather?.current.condition === 'clear' && weather.current.temp >= 60 && weather.current.temp <= 80) {
+      reason = '☀️ Great walking weather';
     } else {
       reason = '★ Best overall';
     }
@@ -432,6 +558,35 @@ export default function RoutesList({ onRouteSelect }: RoutesListProps) {
         )}
       </div>
 
+      {/* Weather & traffic info bar */}
+      <div className="bg-gray-100 px-4 py-2 text-sm text-gray-600 flex items-center gap-1">
+        {weather?.current.condition === 'rain' || weather?.current.condition === 'drizzle' ? (
+          <CloudRain className="w-4 h-4" />
+        ) : weather?.current.condition === 'snow' ? (
+          <Snowflake className="w-4 h-4" />
+        ) : weather?.current.condition === 'clouds' ? (
+          <Cloud className="w-4 h-4" />
+        ) : (
+          <Sun className="w-4 h-4" />
+        )}
+        <span>{weather ? `${Math.round(weather.current.temp)}°F` : '72°F'}</span>
+        <span> in </span>
+        <span>{(() => {
+          // Try to get city from origin or destination
+          const loc = origin || destination;
+          if (!loc) return 'New York City';
+          // If name is "Current Location", extract city from address
+          if (loc.name === 'Current Location' && loc.address) {
+            const parts = loc.address.split(',');
+            // Usually address format is "Street, City, State, Country" - get the city part
+            return parts.length >= 2 ? parts[1]?.trim() : parts[0]?.trim();
+          }
+          return loc.name?.split(',')[0] || 'New York City';
+        })()}</span>
+        <span className="text-gray-400"> · </span>
+        <span>{timeContext.isRushHour ? 'Rush hour, busier sidewalks' : timeContext.timeOfDay === 'late-night' ? 'Late night, quieter streets' : 'Normal traffic'}</span>
+      </div>
+
       {/* Route cards */}
       <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
         {isLoading && (
@@ -492,7 +647,11 @@ export default function RoutesList({ onRouteSelect }: RoutesListProps) {
 
         {routes.length > 0 && (
           <div className="text-center text-gray-500 py-4 text-sm">
-            Tap a route to see walking-friendly details
+            {transportMode === 'driving-traffic' 
+              ? 'Tap a route to see driving details'
+              : transportMode === 'cycling'
+                ? 'Tap a route to see cycling-friendly details'
+                : 'Tap a route to see walking-friendly details'}
           </div>
         )}
       </div>
