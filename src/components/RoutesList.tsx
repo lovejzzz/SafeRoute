@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, MoreVertical, Car, User, Bike, Loader2, Settings, Info, MapPin, RotateCcw, ArrowUpDown } from 'lucide-react';
+import { MoreVertical, Car, User, Bike, Loader2, Settings, Info, MapPin, RotateCcw, ArrowUpDown } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import RouteCard from './RouteCard';
 import LocationSearch from './LocationSearch';
@@ -294,16 +294,6 @@ export default function RoutesList({ onRouteSelect }: RoutesListProps) {
               }}
             >
               Clear all
-            </DropdownItem>
-            <DropdownItem 
-              icon={<ArrowLeft className="w-4 h-4 rotate-90" />}
-              onClick={() => {
-                const temp = origin;
-                setOrigin(destination);
-                setDestination(temp);
-              }}
-            >
-              Swap start & end
             </DropdownItem>
             <DropdownDivider />
             {/* Route Preference Toggle */}
