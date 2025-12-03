@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { ArrowLeft, MoreVertical, Car, User, Bike, Loader2, Settings, Info, MapPin, RotateCcw } from 'lucide-react';
+import { ArrowLeft, MoreVertical, Car, User, Bike, Loader2, Settings, Info, MapPin, RotateCcw, ArrowUpDown } from 'lucide-react';
 import mapboxgl from 'mapbox-gl';
 import RouteCard from './RouteCard';
 import LocationSearch from './LocationSearch';
@@ -366,18 +366,31 @@ export default function RoutesList({ onRouteSelect }: RoutesListProps) {
           </DropdownMenu>
         </div>
         
-        <div className="space-y-2">
-          <LocationSearch
-            placeholder="Start location"
-            value={origin}
-            onChange={setOrigin}
-            showCurrentLocation
-          />
-          <LocationSearch
-            placeholder="Destination"
-            value={destination}
-            onChange={setDestination}
-          />
+        <div className="flex items-center gap-2">
+          <div className="flex-1 space-y-2">
+            <LocationSearch
+              placeholder="Start location"
+              value={origin}
+              onChange={setOrigin}
+              showCurrentLocation
+            />
+            <LocationSearch
+              placeholder="Destination"
+              value={destination}
+              onChange={setDestination}
+            />
+          </div>
+          <button
+            onClick={() => {
+              const temp = origin;
+              setOrigin(destination);
+              setDestination(temp);
+            }}
+            className="p-2 bg-gray-100 hover:bg-gray-200 rounded-lg transition-colors"
+            title="Swap start & end"
+          >
+            <ArrowUpDown className="w-5 h-5 text-gray-600" />
+          </button>
         </div>
       </div>
 
